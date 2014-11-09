@@ -1,0 +1,486 @@
+<html>
+<head>
+<title>Lines</title>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
+<style>
+table {
+   border-collapse: collapse;
+   border-spacing: 0;
+}
+tr, td {
+   vertical-align: middle;
+   overflow: visible;
+   border: 1px solid black;
+   width: 41px;
+   height: 41px;
+   padding: 0;
+   margin: 0;
+}
+img {
+   position: relative;
+   top: 0;
+   left: 0;
+   transition: transform 0.2s linear 0s;
+}
+#score {
+	position: fixed;
+	top: 50px;
+	left: 700px;
+	font: bold 20pt sans-serif;
+}
+</style>
+<script type="text/javascript">
+<!--
+var globalInfo = {
+    selectedId: 0,
+	flag: 0,
+	col: [],
+	row: [],
+	main_diag: [],
+	second_diag: [],
+	current_moved_colour: '',
+}
+
+window.onload = function() {
+    var tdEls = document.getElementsByTagName('td');
+	var i = 0;
+	while(tdEls[i]){
+	    tdEls[i].addEventListener('click', action);
+		i++;
+	}
+	for (i=0; i<13; i++){
+		newBall();
+	}
+}
+
+function action(e){
+    var El = getEl(e);
+	if (!globalInfo.selectedId && !hasBall(El)){
+	    return false;
+	}else if (!globalInfo.selectedId){
+	    select(El);
+	}else if (globalInfo.selectedId == El.id){
+	    unselect(El);
+	}else if (globalInfo.selectedId && !hasBall(El)){
+	    move(El);
+	}else {
+	    return false;
+	}
+	
+}
+
+function getEl(e){
+    if (e.target.tagName == 'IMG'){
+        var el = e.target.parentElement;
+	}
+	else {
+	    var el = e.target;
+	}
+    return el;
+}
+
+function select(El){
+    globalInfo.selectedId = El.id;
+	El.style.backgroundColor = '#85FF00';
+}
+
+function unselect(El){
+    globalInfo.selectedId = 0;
+	El.style.backgroundColor = 'white';
+}
+
+function move(El){
+    var OldEl = document.getElementById(globalInfo.selectedId);
+	unselect(OldEl);
+	var oldHtml = OldEl.innerHTML;
+	
+	var img = OldEl.firstChild;
+	var newCoordinates = El.getBoundingClientRect();
+	var oldCoordinates = OldEl.getBoundingClientRect();
+	var dTop = newCoordinates.top - oldCoordinates.top;
+	var dLeft = newCoordinates.left - oldCoordinates.left;
+	img.style.zIndex = 1;
+	img.style.transform = 'translate(' + dLeft + 'px, ' + dTop + 'px)';
+	
+	function move2(){
+		El.innerHTML = oldHtml;
+		OldEl.removeChild(img);
+		globalInfo.current_moved_colour = El.innerHTML;
+		checkAndDestroy(El);
+		globalInfo.current_moved_colour = '';
+		var free_cells = checkFreeCells();
+		if ( ! free_cells){
+			alert('GAME OVER');
+			throw 'GAME OVER';
+		} else if (free_cells == 1){
+			newBall();
+			if ( ! checkFreeCells() ){
+				alert('GAME OVER');
+				throw 'GAME OVER';
+			}
+		} else if ( free_cells == 2 ){
+			newBall();
+			newBall();
+			if ( ! checkFreeCells() ){
+				alert('GAME OVER');
+				throw 'GAME OVER';
+			}
+		} else {
+			newBall();
+			newBall();
+		}
+	}
+	
+	setTimeout(move2, 500);
+}
+
+function hasBall(El){
+    if (El.innerHTML !== '') {
+	    return true;
+	}
+	else {
+	    return false;
+	}
+}
+
+function checkAndDestroy(El){
+	var id_array = El.id.split('.');
+	id_array[0] = parseInt(id_array[0]);
+	id_array[1] = parseInt(id_array[1]);
+	traverse(id_array[0], id_array[1], -1,-1, checkCell('main_diag'));
+	traverse(id_array[0], id_array[1], -1, 0, checkCell('col'));
+	traverse(id_array[0], id_array[1], -1, 1, checkCell('second_diag'));
+	traverse(id_array[0], id_array[1],  0, 1, checkCell('row'));
+	traverse(id_array[0], id_array[1],  1, 1, checkCell('main_diag'));
+	traverse(id_array[0], id_array[1],  1, 0, checkCell('col'));
+	traverse(id_array[0], id_array[1],  1,-1, checkCell('second_diag'));
+	traverse(id_array[0], id_array[1],  0,-1, checkCell('row'));
+	destroy(El);
+}
+
+function traverse(x, y, dx, dy, f){
+	traverse_internal(x+dx, y+dy, dx, dy, f);
+}
+
+function traverse_internal(x, y, dx, dy, f){
+	if(f(x,y)){
+		traverse_internal(x+dx, y+dy, dx, dy, f);
+	}
+}
+function checkCell(direction){
+	switch(direction){
+		case 'main_diag':
+			return function(x, y){
+				var El = document.getElementById(x + '.' + y);
+				if(El){
+					if(hasBall(El)){
+						if(hasTheSameColour(El)){
+							globalInfo.main_diag.push(El);
+							return true;
+						}else{
+							return false;
+						}
+					}else{
+						return false;
+					}
+				}else{
+					return false;
+				}
+			}
+		case 'second_diag':
+			return function(x, y){
+				var El = document.getElementById(x + '.' + y);
+				if(El){
+					if(hasBall(El)){
+						if(hasTheSameColour(El)){
+							globalInfo.second_diag.push(El);
+							return true;
+						}else{
+							return false;
+						}
+					}else{
+						return false;
+					}
+				}else{
+					return false;
+				}
+			}
+		case 'col':
+			return function(x, y){
+				var El = document.getElementById(x + '.' + y);
+				if(El){
+					if(hasBall(El)){
+						if(hasTheSameColour(El)){
+							globalInfo.col.push(El);
+							return true;
+						}else{
+							return false;
+						}
+					}else{
+						return false;
+					}
+				}else{
+					return false;
+				}
+			}
+		case 'row':
+			return function(x, y){
+				var El = document.getElementById(x + '.' + y);
+				if(El){
+					if(hasBall(El)){
+						if(hasTheSameColour(El)){
+							globalInfo.row.push(El);
+							return true;
+						}else{
+							return false;
+						}
+					}else{
+						return false;
+					}
+				}else{
+					return false;
+				}
+			}
+		default:
+			alert('LOL');
+	}
+}
+
+function destroy(El){
+	var collect = 1, len = globalInfo.row.length;
+	if(len > 2){
+		collect += len;
+		globalInfo.flag = 1;
+		reduce(globalInfo.row, destroyCell, false);
+	}
+	len = globalInfo.col.length;
+	if(len > 2){
+		collect += len;
+		globalInfo.flag = 1;
+		reduce(globalInfo.col, destroyCell, false);
+	}
+	len = globalInfo.main_diag.length;
+	if(len > 2){
+		collect += len;
+		globalInfo.flag = 1;
+		reduce(globalInfo.main_diag, destroyCell, false);
+	}
+	len = globalInfo.second_diag.length;
+	if(len > 2){
+		collect += len;
+		globalInfo.flag = 1;
+		reduce(globalInfo.second_diag, destroyCell, false);
+	}
+	if(globalInfo.flag === 1){
+		addScore(collect);
+		El.innerHTML = '';
+		globalInfo.flag = 0;
+	}
+	globalInfo.row = [];
+	globalInfo.col = [];
+	globalInfo.main_diag = [];
+	globalInfo.second_diag = [];
+}
+
+function reduce(array, f, init){
+	if(array.length == 0){
+		return init;
+	}else{
+		return reduce(array.slice(1), f, f(init, array[0]));
+	}
+}
+
+function destroyCell(init, El){
+	El.innerHTML = '';
+	return false;
+}
+
+function hasTheSameColour(El){
+	if(El.innerHTML === globalInfo.current_moved_colour){
+		return true;
+	}else{
+		return false;
+	}
+}
+
+function newBall(){
+	var col, row, El;
+	do {
+		col = customRandom(1, 12);
+		row = customRandom(1, 7);
+		El = document.getElementById(col + '.' + row);
+		} while (hasBall(El))
+	El.innerHTML = randomColour();
+	globalInfo.current_moved_colour = El.innerHTML;
+	checkAndDestroy(El);
+	globalInfo.current_moved_colour = '';
+}
+
+function customRandom(min, max){
+	var result;
+	do {
+		result = Math.floor(Math.random()*(max + 0.999));
+		} while( result < min )
+	return result;
+}
+
+function randomColour(){
+	var colourId = customRandom(0, 3);
+	switch(colourId){
+		case 0:
+			return '<img src="red_ball.bmp">';
+		case 1:
+			return '<img src="blue_ball.bmp">';
+		case 2:
+			return '<img src="green_ball.bmp">';
+		case 3:
+			return '<img src="yellow_ball.bmp">';
+		default:
+			alert('LOL');
+	}
+}
+
+function checkFreeCells(){
+	function checkFreeCells_internal(counter,result){
+		if ( result > 2 || counter > 12 ){
+			return result;
+		}
+		result = checkFreeCells_subinternal(counter, 1, result);
+		
+		return checkFreeCells_internal(++counter,result);
+	}
+	
+	function checkFreeCells_subinternal(outer_counter, counter, result){
+		if ( result > 2 || counter > 7 ){
+			return result;
+		}
+		if ( ! hasBall( document.getElementById(outer_counter + '.' + counter) ) ){
+			result++;
+		}
+		return checkFreeCells_subinternal(outer_counter, ++counter, result);
+	}
+	
+	return checkFreeCells_internal(1, 0);
+}
+
+function addScore(cells){
+	var score_div = document.getElementById('score');
+	score_div.innerHTML = Math.ceil(parseInt(score_div.innerHTML) + Math.pow(cells/4, 2)*10*cells);
+}
+//-->
+</script>
+</head>
+<body>
+<div id="score">0</div>
+<table>
+<tr>
+<td id="1.1"></td>
+<td id="1.2"></td>
+<td id="1.3"></td>
+<td id="1.4"></td>
+<td id="1.5"></td>
+<td id="1.6"></td>
+<td id="1.7"></td>
+</tr>
+<tr>
+<td id="2.1"></td>
+<td id="2.2"></td>
+<td id="2.3"></td>
+<td id="2.4"></td>
+<td id="2.5"></td>
+<td id="2.6"></td>
+<td id="2.7"></td>
+</tr>
+<tr>
+<td id="3.1"></td>
+<td id="3.2"></td>
+<td id="3.3"></td>
+<td id="3.4"></td>
+<td id="3.5"></td>
+<td id="3.6"></td>
+<td id="3.7"></td>
+</tr>
+<tr>
+<td id="4.1"></td>
+<td id="4.2"></td>
+<td id="4.3"></td>
+<td id="4.4"></td>
+<td id="4.5"></td>
+<td id="4.6"></td>
+<td id="4.7"></td>
+</tr>
+<tr>
+<td id="5.1"></td>
+<td id="5.2"></td>
+<td id="5.3"></td>
+<td id="5.4"></td>
+<td id="5.5"></td>
+<td id="5.6"></td>
+<td id="5.7"></td>
+</tr>
+<tr>
+<td id="6.1"></td>
+<td id="6.2"></td>
+<td id="6.3"></td>
+<td id="6.4"></td>
+<td id="6.5"></td>
+<td id="6.6"></td>
+<td id="6.7"></td>
+</tr>
+<tr>
+<td id="7.1"></td>
+<td id="7.2"></td>
+<td id="7.3"></td>
+<td id="7.4"></td>
+<td id="7.5"></td>
+<td id="7.6"></td>
+<td id="7.7"></td>
+</tr>
+<tr>
+<td id="8.1"></td>
+<td id="8.2"></td>
+<td id="8.3"></td>
+<td id="8.4"></td>
+<td id="8.5"></td>
+<td id="8.6"></td>
+<td id="8.7"></td>
+</tr>
+<tr>
+<td id="9.1"></td>
+<td id="9.2"></td>
+<td id="9.3"></td>
+<td id="9.4"></td>
+<td id="9.5"></td>
+<td id="9.6"></td>
+<td id="9.7"></td>
+</tr>
+<tr>
+<td id="10.1"></td>
+<td id="10.2"></td>
+<td id="10.3"></td>
+<td id="10.4"></td>
+<td id="10.5"></td>
+<td id="10.6"></td>
+<td id="10.7"></td>
+</tr>
+<tr>
+<td id="11.1"></td>
+<td id="11.2"></td>
+<td id="11.3"></td>
+<td id="11.4"></td>
+<td id="11.5"></td>
+<td id="11.6"></td>
+<td id="11.7"></td>
+</tr>
+<tr>
+<td id="12.1"></td>
+<td id="12.2"></td>
+<td id="12.3"></td>
+<td id="12.4"></td>
+<td id="12.5"></td>
+<td id="12.6"></td>
+<td id="12.7"></td>
+</tr>
+</table>
+</body>
+</html>
